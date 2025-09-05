@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Enterprise Operations Dashboard</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* -------------------------------
+       Design System (CSS Variables)
+       ------------------------------- */
+    :root {
+      --bg: #0f1420;
+      --bg-elev: #121a2a;
+      --panel: #171f31;
+      --panel-2: #1d2740;
+      --txt: #e7ecf6;
+      --txt-muted: #9fb2d9;
+      --brand: #5b8cff;
+      --brand-2: #7ee7ff;
+      --ok: #29c36a;
+      --warn: #ffb020;
+      --danger: #ff5470;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+      --radius-sm: 12px;
+      --radius-xs: 9px;
+      --gap: 18px;
+      --gap-sm: 12px;
+      --gap-xs: 8px;
+      --border: 1px solid rgba(255,255,255,.08);
+    }
+    :root.light {
+      --bg: #f7f9fc;
+      --bg-elev: #ffffff;
+      --panel: #ffffff;
+      --panel-2: #f2f5fb;
+      --txt: #111827;
+      --txt-muted: #5b6b92;
+      --brand: #3056ff;
+      --brand-2: #00aee0;
+      --ok: #18a558;
+      --warn: #c47f00;
+      --danger: #d11e49;
+      --shadow: 0 12px 24px rgba(17,24,39,.08);
+      --border: 1px solid rgba(14,23,38,.08);
+    }
+
+    /* Reset & base */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: "Pretendard", system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Apple SD Gothic Neo, sans-serif;
+      background: var(--bg); color: var(--txt);
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    }
+    a { color: inherit; text-decoration: none; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; border: 0; padding: 0; clip: rect(0 0 0 0); overflow: hidden; }
+
+    /* Layout */
+    .app {
+      display: grid; grid-template-columns: 260px 1fr; grid-template-rows: 72px 1fr; grid-template-areas:
+      "sidebar header"
+      "sidebar main"; min-height: 100vh; gap: 0;
+    }
+    header { grid-area: header; backdrop-filter: saturate(140%) blur(10px); position: sticky; top: 0; z-index: 50; }
+    aside { grid-area: sidebar; position: sticky; top: 0; height: 100vh; overflow: auto; }
+    main { grid-area: main; padding: 22px; }
+
+    /* Header */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; height: 72px;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0)) , var(--bg-elev);
+      border-bottom: var(--border);
+      padding: 0 18px 0 10px; box-shadow: var(--shadow);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand__logo {
+      width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px;
+      background: radial-gradient(100% 100% at 0% 0%, var(--brand) 0%, var(--brand-2) 100%);
+      color: #00121c; font-weight: 800; letter-spacing: .5px; box-shadow: inset 0 -2px 10px rgba(0,0,0,.2);
+    }
+    .brand__name { font-size: 18px; font-weight: 700; }
+
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .input {
+      display: flex; align-items: center; gap: 8px; background: var(--panel-2); border: var(--border); border-radius: 12px; padding: 8px 12px; min-width: 320px;
+    }
+    .input input { background: transparent; border: 0; outline: none; color: var(--txt); width: 100%; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px; border: var(--border); background: var(--panel);
+      padding: 9px 12px; border-radius: 10px; cursor: pointer; transition: transform .06s ease, background .2s;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.primary { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0)), var(--brand); color: #00121c; border: none; font-weight: 700; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(180deg, #8fd3ff, #6ea8ff); display: grid; place-items: center; font-weight: 700; color: #0a1421; }
+
+    /* Sidebar */
+    .sidebar { background: var(--panel); border-right: var(--border); display: flex; flex-direction: column; }
+    .sidebar .section { padding: 14px 16px; color: var(--txt-muted); font-weight: 600; letter-spacing: .6px; text-transform: uppercase; font-size: 12px; }
+    .nav { display: grid; gap: 6px; padding: 0 12px 18px; }
+    .nav a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: var(--txt-muted); }
+    .nav a:hover { background: var(--panel-2); color: var(--txt); }
+    .nav a.active { background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0)), var(--panel-2); color: var(--txt); border: 1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+    .sidebar-footer { margin-top: auto; padding: 14px; display: grid; gap: 10px; }
+
+    /* Main */
+    .grid { display: grid; gap: var(--gap); }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .card { background: var(--panel); border: var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .card-title { font-weight: 700; font-size: 15px; letter-spacing: .3px; }
+    .kpis { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: var(--gap); }
+    .kpi { background: var(--panel-2); border: var(--border); border-radius: var(--radius-sm); padding: 16px; display:flex; flex-direction: column; gap: 6px; }
+    .kpi .label { font-size: 12px; color: var(--txt-muted); letter-spacing: .3px; }
+    .kpi .value { font-size: 22px; font-weight: 800; letter-spacing: .2px; }
+    .kpi .delta { font-size: 12px; font-weight: 700; }
+    .delta.ok { color: var(--ok); } .delta.warn { color: var(--warn);} .delta.bad { color: var(--danger);} 
+
+    /* Table */
+    .table-wrap { overflow: auto; border-radius: var(--radius); border: var(--border); }
+    table { width: 100%; border-collapse: collapse; background: var(--panel); }
+    thead th { position: sticky; top: 0; background: var(--panel-2); color: var(--txt-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .6px; }
+    th, td { padding: 12px 14px; border-bottom: var(--border); text-align: left; }
+    tr:hover td { background: rgba(255,255,255,.03); }
+    .status { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 999px; font-size: 12px; border: var(--border); }
+    .status.ok { background: rgba(41,195,106,.12); color: var(--ok); border-color: rgba(41,195,106,.3); }
+    .status.warn { background: rgba(255,176,32,.12); color: var(--warn); border-color: rgba(255,176,32,.3); }
+    .status.bad { background: rgba(255,84,112,.12); color: var(--danger); border-color: rgba(255,84,112,.3); }
+    .table-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+    .tab { padding: 8px 12px; border-radius: 10px; border: var(--border); color: var(--txt-muted); cursor: pointer; }
+    .tab.active { background: var(--panel-2); color: var(--txt); }
+
+    /* Chip & badge */
+    .chip { display:inline-flex; align-items:center; gap:8px; background: var(--panel-2); border: var(--border); padding: 6px 10px; border-radius: 999px; font-weight:600; }
+
+    /* Footer */
+    footer { margin-top: 24px; padding: 24px; color: var(--txt-muted); display:flex; align-items:center; justify-content:space-between; }
+
+    /* Modal */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 100; }
+    .modal { width: min(700px, 92vw); background: var(--panel); border: var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
+    .modal.show + .modal-backdrop, .modal-backdrop.show { display: flex; }
+
+    /* Toast */
+    .toasts { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 10px; z-index: 120; }
+    .toast { background: var(--panel); border: var(--border); border-left: 4px solid var(--brand); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow); min-width: 280px; }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .kpis { grid-template-columns: repeat(3, minmax(0,1fr)); }
+      .grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid.cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .app { grid-template-columns: 80px 1fr; }
+      .sidebar .label { display: none; }
+      .brand__name { display: none; }
+      .input { min-width: 200px; }
+    }
+    @media (max-width: 720px) {
+      .kpis { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .grid.cols-2, .grid.cols-3, .grid.cols-4 { grid-template-columns: 1fr; }
+      .app { grid-template-columns: 1fr; grid-template-areas:
+        "header"
+        "main";
+      }
+      aside { display: none; }
+      .input { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="section">메인 메뉴</div>
+      <nav class="nav" id="side-nav">
+        <a href="#overview" class="active"><span>📊</span> <span class="label">개요</span></a>
+        <a href="#revenue"><span>💹</span> <span class="label">매출</span></a>
+        <a href="#risk"><span>🧯</span> <span class="label">리스크</span></a>
+        <a href="#ops"><span>🧭</span> <span class="label">운영</span></a>
+        <a href="#customers"><span>👥</span> <span class="label">고객</span></a>
+        <a href="#settings"><span>⚙️</span> <span class="label">설정</span></a>
+      </nav>
+      <div class="section">빠른 작업</div>
+      <div class="nav">
+        <a href="#" id="open-modal"><span>➕</span> <span class="label">새 보고서</span></a>
+        <a href="#" id="download-csv"><span>⬇️</span> <span class="label">CSV 다운로드</span></a>
+        <a href="#" id="toggle-theme"><span>🌓</span> <span class="label">라이트/다크</span></a>
+      </div>
+      <div class="sidebar-footer">
+        <div class="chip">🔔 알림 <span id="notif-count" class="chip">0</span></div>
+        <small style="color:var(--txt-muted)">엔터프라이즈 v1.0.0</small>
+      </div>
+    </aside>
+
+    <!-- Header -->
+    <header>
+      <div class="topbar">
+        <div class="brand">
+          <div class="brand__logo">EO</div>
+          <div class="brand__name">Enterprise Ops</div>
+        </div>
+        <div class="top-actions">
+          <label class="input">
+            <span>🔎</span>
+            <input id="search" type="search" placeholder="검색: 프로젝트, 고객, 지표…" />
+          </label>
+          <button class="btn" id="sidebar-collapse">사이드바</button>
+          <button class="btn" id="notify">알림 테스트</button>
+          <button class="btn primary" id="new-report">+ 새 보고서</button>
+          <div class="avatar" title="Gloria">GL</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <main>
+      <!-- KPIs -->
+      <section id="overview" class="grid" style="margin-bottom: 18px;">
+        <div class="kpis">
+          <div class="kpi"><div class="label">오늘 매출</div><div class="value" id="kpi-sales">₩-</div><div class="delta ok" id="kpi-sales-delta">+0.0% 오늘</div></div>
+          <div class="kpi"><div class="label">월간 MRR</div><div class="value" id="kpi-mrr">₩-</div><div class="delta ok" id="kpi-mrr-delta">+0.0% MoM</div></div>
+          <div class="kpi"><div class="label">활성 사용자</div><div class="value" id="kpi-users">-</div><div class="delta ok" id="kpi-users-delta">+0.0% WoW</div></div>
+          <div class="kpi"><div class="label">이탈률</div><div class="value" id="kpi-churn">-</div><div class="delta bad" id="kpi-churn-delta">+0.0% MoM</div></div>
+          <div class="kpi"><div class="label">가동률</div><div class="value" id="kpi-uptime">-</div><div class="delta ok" id="kpi-uptime-delta">+0.0% 30d</div></div>
+          <div class="kpi"><div class="label">알림</div><div class="value" id="kpi-alerts">-</div><div class="delta warn" id="kpi-alerts-delta">최근 24h</div></div>
+        </div>
+      </section>
+
+      <!-- Charts Row -->
+      <section class="grid cols-3">
+        <article class="card">
+          <div class="card-header">
+            <div class="card-title">매출 & 비용 (12개월)</div>
+            <div class="chip">💳 재무</div>
+          </div>
+          <canvas id="chartRevenue" height="140"></canvas>
+        </article>
+        <article class="card">
+          <div class="card-header">
+            <div class="card-title">상위 제품 5</div>
+            <div class="tabs">
+              <button class="tab active" data-topn="5">Top 5</button>
+              <button class="tab" data-topn="10">Top 10</button>
+            </div>
+          </div>
+          <canvas id="chartProducts" height="140"></canvas>
+        </article>
+        <article class="card">
+          <div class="card-header">
+            <div class="card-title">트래픽 소스</div>
+            <div class="chip">🌐 마케팅</div>
+          </div>
+          <canvas id="chartTraffic" height="140"></canvas>
+        </article>
+      </section>
+
+      <!-- Table + Activity -->
+      <section class="grid cols-2" style="margin-top: 18px;">
+        <article class="card">
+          <div class="card-header">
+            <div class="card-title">운영 이슈 로그 (최근 200건)</div>
+            <div class="table-tools">
+              <input id="table-search" type="search" placeholder="필터: 서비스명, 심각도, 상태…" class="btn" style="min-width:260px" />
+              <select id="sev-filter" class="btn">
+                <option value="">심각도(전체)</option>
+                <option>Low</option>
+                <option>Medium</option>
+                <option>High</option>
+                <option>Critical</option>
+              </select>
+              <button class="btn" id="sort-created">생성일 정렬</button>
+              <button class="btn" id="reset-table">초기화</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="issues">
+              <thead>
+                <tr>
+                  <th>Ticket</th>
+                  <th>서비스</th>
+                  <th>심각도</th>
+                  <th>상태</th>
+                  <th>담당</th>
+                  <th>SLA</th>
+                  <th>생성</th>
+                </tr>
+              </thead>
+              <tbody id="issues-body">
+                <!-- 40개의 실제 샘플 행 (나머지는 JS로 추가) -->
+                <tr><td>#2025-0001</td><td>Auth API</td><td>High</td><td><span class="status warn">Investigating</span></td><td>Kim</td><td>4h</td><td>2025-08-25 09:22</td></tr>
+                <tr><td>#2025-0002</td><td>Orders</td><td>Medium</td><td><span class="status ok">Resolved</span></td><td>Lee</td><td>8h</td><td>2025-08-25 09:40</td></tr>
+                <tr><td>#2025-0003</td><td>Payments</td><td>Critical</td><td><span class="status bad">Outage</span></td><td>Choi</td><td>1h</td><td>2025-08-25 10:05</td></tr>
+                <tr><td>#2025-0004</td><td>Analytics</td><td>Low</td><td><span class="status ok">Resolved</span></td><td>Park</td><td>24h</td><td>2025-08-25 10:48</td></tr>
+                <tr><td>#2025-0005</td><td>Billing</td><td>High</td><td><span class="status warn">Mitigating</span></td><td>Han</td><td>6h</td><td>2025-08-25 11:02</td></tr>
+                <tr><td>#2025-0006</td><td>CRM</td><td>Medium</td><td><span class="status ok">Resolved</span></td><td>Jeon</td><td>12h</td><td>2025-08-25 11:18</td></tr>
+                <tr><td>#2025-0007</td><td>Gateway</td><td>High</td><td><span class="status warn">Mitigating</span></td><td>Shin</td><td>4h</td><td>2025-08-25 11:46</td></tr>
+                <tr><td>#2025-0008</td><td>ETL</td><td>Low</td><td><span class="status ok">Resolved</span></td><td>Jung</td><td>24h</td><td>2025-08-25 12:14</td></tr>
+                <tr><td>#2025-0009</td><td>Cache</td><td>Medium</td><td><span class="status warn">Investigating</span></td><td>Song</td><td>8h</td><td>2025-08-25 12:37</td></tr>
+                <tr><td>#2025-0010</td><td>Search</td><td>High</td><td><span class="status bad">Outage</span></td><td>Yoo</td><td>2h</td><td>2025-08-25 12:55</td></tr>
+                <tr><td>#2025-0011</td><td>Recsys</td><td>Medium</td><td><span class="status warn">Mitigating</span></td><td>Na</td><td>12h</td><td>2025-08-25 13:20</td></tr>
+                <tr><td>#2025-0012</td><td>Auth API</td><td>Low</td><td><span class="status ok">Resolved</span></td><td>Kim</td><td>24h</td><td>2025-08-25 14:02</td></tr>
+                <tr><td>#2025-0013</td><td>Payments</td><td>High</td><td><span class="status warn">Investigating</span></td><td>Choi</td><td>4h</td><td>2025-08-25 14:42</td></tr>
+                <tr><td>#2025-0014</td><td>Gateway</td><td>Medium</td><td><span class="status ok">Resolved</span></td><td>Shin</td><td>12h</td><td>2025-08-25 15:05</td></tr>
+                <tr><td>#2025-0015</td><td>Orders</td><td>Critical</td><td><span class="status bad">Outage</span></td><td>Lee</td><td>1h</td><td>2025-08-25 15:31</td></tr>
+                <tr><td>#2025-0016</td><td>Analytics</td><td>Low</td><td><span class="status ok">Resolved</span></td><td>Park</td><td>24h</td><td>2025-08-25 15:58</td></tr>
+                <tr><td>#2025-0017</td><td>Billing</td><td>Medium</td><td><span class="status warn">Investigating</span></td><td>Han</td><td>8h</td><td>2025-08-25 16:20</td></tr>
+                <tr><td>#2025-0018</td><td>CRM</td><td>High</td><td><span class="status warn">Mitigating</span></td><td>Jeon</td><td>6h</td><td>2025-08-25 16:40</td></tr>
+                <tr><td>#2025-0019</td><td>Cache</td><td>Low</td><td><span class="status ok">Resolved</span></td><td>Song</td><td>24h</td><td>2025-08-25 17:05</td></tr>
+                <tr><td>#2025-0020</td><td>Search</td><td>Medium</td><td><span class="status warn">Investigating</span></td><td>Yoo</td><td>12h</td><td>2025-08-25 17:40</td></tr>
+                <tr><td>#2025-0021</td><td>Auth API</td><td>High</td><td><span class="status bad">Outage</span></td><td>Kim</td><td>2h</td><td>2025-08-26 09:02</td></tr>
+                <tr><td>#2025-0022</td><td>Orders</td><td>Low</td><td><span class="status ok">Resolved</span></td><td>Lee</td><td>24h</td><td>2025-08-26 09:18</td></tr>
+                <tr><td>#2025-0023</td><td>Payments</td><td>Medium</td><td><span class="status ok">Resolved</span></td><td>Choi</td><td>8h</td><td>2025-08-26 09:47</td></tr>
+                <tr><td>#2025-0024</td><td>Analytics</td><td>High</td><td><span class="status warn">Mitigating</span></td><td>Park</td><td>4h</td><td>2025-08-26 10:22</td></tr>
+                <tr><td>#2025-0025</td><td>Billing</td><td>Critical</td><td><span class="status bad">Outage</span></td><td>Han</td><td>1h</td><td>2025-08-26 10:55</td></tr>
+                <tr><td>#2025-0026</td><td>CRM</td><td>Low</td><td><span class="status ok">Resolved</span></td><td>Jeon</td><td>24h</td><td>2025-08-26 11:18</td></tr>
+                <tr><td>#2025-0027</td><td>Gateway</td><td>Medium</td><td><span class="status warn">Investigating</span></td><td>Shin</td><td>12h</td><td>2025-08-26 11:40</td></tr>
+                <tr><td>#2025-0028</td><td>ETL</td><td>High</td><td><span class="status warn">Mitigating</span></td><td>Jung</td><td>6h</td><td>2025-08-26 12:12</td></tr>
+                <tr><td>#2025-0029</td><td>Cache</td><td>Low</td><td><span class="status ok">Resolved</span></td><td>Song</td><td>24h</td><td>2025-08-26 12:33</td></tr>
+                <tr><td>#2025-0030</td><td>Search</td><td>Medium</td><td><span class="status ok">Resolved</span></td><td>Yoo</td><td>12h</td><td>2025-08-26 12:49</td></tr>
+                <tr><td>#2025-0031</td><td>Recsys</td><td>High</td><td><span class="status warn">Investigating</span></td><td>Na</td><td>4h</td><td>2025-08-26 13:12</td></tr>
+                <tr><td>#2025-0032</td><td>Auth API</td><td>Low</td><td><span class="status ok">Resolved</span></td><td>Kim</td><td>24h</td><td>2025-08-26 13:40</td></tr>
+                <tr><td>#2025-0033</td><td>Payments</td><td>Medium</td><td><span class="status warn">Mitigating</span></td><td>Choi</td><td>8h</td><td>2025-08-26 14:05</td></tr>
+                <tr><td>#2025-0034</td><td>Gateway</td><td>High</td><td><span class="status bad">Outage</span></td><td>Shin</td><td>2h</td><td>2025-08-26 14:42</td></tr>
+                <tr><td>#2025-0035</td><td>Orders</td><td>Low</td><td><span class="status ok">Resolved</span></td><td>Lee</td><td>24h</td><td>2025-08-26 15:02</td></tr>
+                <tr><td>#2025-0036</td><td>Analytics</td><td>Medium</td><td><span class="status ok">Resolved</span></td><td>Park</td><td>12h</td><td>2025-08-26 15:22</td></tr>
+                <tr><td>#2025-0037</td><td>Billing</td><td>High</td><td><span class="status warn">Investigating</span></td><td>Han</td><td>6h</td><td>2025-08-26 15:50</td></tr>
+                <tr><td>#2025-0038</td><td>CRM</td><td>Critical</td><td><span class="status bad">Outage</span></td><td>Jeon</td><td>1h</td><td>2025-08-26 16:10</td></tr>
+                <tr><td>#2025-0039</td><td>Cache</td><td>High</td><td><span class="status warn">Mitigating</span></td><td>Song</td><td>4h</td><td>2025-08-26 16:38</td></tr>
+                <tr><td>#2025-0040</td><td>Search</td><td>Low</td><td><span class="status ok">Resolved</span></td><td>Yoo</td><td>24h</td><td>2025-08-26 17:00</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display:flex; justify-content: space-between; align-items:center; margin-top:10px;">
+            <div id="table-stats" class="chip">총 0건</div>
+            <div>
+              <button class="btn" data-page="prev">이전</button>
+              <span class="chip" id="page-info">1 / 1</span>
+              <button class="btn" data-page="next">다음</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <div class="card-title">실시간 활동</div>
+            <div class="chip">⏱ 최근 24시간</div>
+          </div>
+          <div id="activity" class="grid" style="gap:12px; max-height: 520px; overflow:auto">
+            <div class="chip">08:10 결제 성공률 99.97% (5m) ✅</div>
+            <div class="chip">08:25 신규 구독 32건 🎉</div>
+            <div class="chip">08:44 장애 티켓 #2025-0038 대응 시작 🚑</div>
+            <div class="chip">09:05 잠재 이탈 고객 12명 재활성화 캠페인 시작 📣</div>
+            <div class="chip">09:40 ETL 배치 지연 4분 ⏳</div>
+            <div class="chip">10:02 북미 트래픽 급증 +12% 🌎</div>
+            <div class="chip">10:18 신규 대시보드 배포 v1.0.0 🚀</div>
+            <div class="chip">10:54 SLA 경고: Payments API p95 780ms ⚠️</div>
+            <div class="chip">11:20 알림: Top 고객 ARPU +5.4% 📈</div>
+            <div class="chip">12:00 정기 백업 완료 🔐</div>
+          </div>
+          <div style="margin-top:12px; display:flex; gap:8px;">
+            <input id="activity-input" class="btn" placeholder="활동 수동 추가 (엔터)" />
+            <button class="btn" id="activity-clear">전체 지우기</button>
+          </div>
+        </article>
+      </section>
+
+      <!-- Settings / Help -->
+      <section id="settings" class="grid cols-2" style="margin-top: 18px;">
+        <article class="card">
+          <div class="card-header">
+            <div class="card-title">환경 설정</div>
+          </div>
+          <div class="grid cols-2">
+            <label class="btn"><input id="toggle-animations" type="checkbox" checked style="margin-right:8px;"> 애니메이션 효과</label>
+            <label class="btn"><input id="persist-state" type="checkbox" checked style="margin-right:8px;"> 설정 저장 (LocalStorage)</label>
+            <label class="btn"><input id="dense-table" type="checkbox" style="margin-right:8px;"> 테이블 밀집 모드</label>
+            <label class="btn"><input id="auto-refresh" type="checkbox" style="margin-right:8px;"> 60초마다 자동 새로고침</label>
+          </div>
+        </article>
+        <article class="card">
+          <div class="card-header">
+            <div class="card-title">도움말</div>
+          </div>
+          <p style="color:var(--txt-muted); line-height:1.6">
+            이 페이지는 실제 운영 사이트와 유사한 UI/UX를 제공하는 정적 HTML 샘플입니다. FastAPI로 그대로 반환하거나, 템플릿 엔진 없이 단일 파일로 배포해도 됩니다.
+            사이드바, 다크모드, KPI, 차트(Chart.js), 검색/필터/페이지네이션 가능한 테이블, 모달, 토스트, 설정 보존 등 흔한 기능을 포함합니다.
+          </p>
+        </article>
+      </section>
+
+      <footer>
+        <span>© 2025 Enterprise Ops Dashboard — Built for demo</span>
+        <span class="chip">서울 · KST</span>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="card-header">
+        <div class="card-title" id="modal-title">새 보고서 만들기</div>
+        <button class="btn" id="modal-close">닫기</button>
+      </div>
+      <div class="grid cols-2">
+        <label class="btn"><span>제목</span> <input id="report-title" style="margin-left:8px" placeholder="월간 운영 리포트"/></label>
+        <label class="btn"><span>범위</span> <select id="report-range" style="margin-left:8px"><option>최근 7일</option><option selected>최근 30일</option><option>최근 90일</option></select></label>
+        <label class="btn" style="grid-column: 1 / -1"><span>설명</span> <input id="report-desc" style="margin-left:8px" placeholder="핵심 KPI, 이슈 요약, 권고사항…"/></label>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top: 10px;">
+        <button class="btn" id="modal-cancel">취소</button>
+        <button class="btn primary" id="modal-create">생성</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div class="toasts" id="toasts"></div>
+
+  <script>
+    // -----------------------------------
+    // Utilities
+    // -----------------------------------
+    const $ = (sel, el=document) => el.querySelector(sel);
+    const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+    const fmt = new Intl.NumberFormat('ko-KR');
+    const money = n => `₩${fmt.format(n)}`;
+    const dayjs = date => new Date(date);
+
+    const state = {
+      theme: localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'),
+      sidebarCollapsed: JSON.parse(localStorage.getItem('sidebarCollapsed') || 'false'),
+      animations: JSON.parse(localStorage.getItem('animations') || 'true'),
+      persist: JSON.parse(localStorage.getItem('persist') || 'true'),
+      denseTable: JSON.parse(localStorage.getItem('denseTable') || 'false'),
+      autoRefresh: JSON.parse(localStorage.getItem('autoRefresh') || 'false'),
+    };
+
+    // Theme apply
+    const applyTheme = (t) => {
+      document.documentElement.classList.toggle('light', t === 'light');
+      localStorage.setItem('theme', t);
+    };
+
+    // Sidebar collapse apply
+    const applySidebar = (collapsed) => {
+      const app = $('.app');
+      if (collapsed) app.style.gridTemplateColumns = '80px 1fr';
+      else app.style.gridTemplateColumns = '260px 1fr';
+      localStorage.setItem('sidebarCollapsed', JSON.stringify(collapsed));
+    };
+
+    // Dense table
+    const applyDense = (dense) => {
+      const table = $('#issues');
+      table.style.fontSize = dense ? '13px' : '';
+      $$('th, td', table).forEach(td => td.style.padding = dense ? '8px 10px' : '12px 14px');
+      localStorage.setItem('denseTable', JSON.stringify(dense));
+    };
+
+    // Toasts
+    const toast = (msg, kind = 'info') => {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<strong style="display:block;margin-bottom:4px">${kind.toUpperCase()}</strong>${msg}`;
+      $('#toasts').appendChild(t);
+      const n = parseInt($('#notif-count').textContent || '0', 10) + 1;
+      $('#notif-count').textContent = n;
+      setTimeout(() => t.remove(), 4000);
+    };
+
+    // Modal
+    const openModal = () => { $('#modal-backdrop').classList.add('show'); };
+    const closeModal = () => { $('#modal-backdrop').classList.remove('show'); };
+
+    // -----------------------------------
+    // Mock Data
+    // -----------------------------------
+    const months = Array.from({length: 12}, (_, i) => {
+      const d = new Date(); d.setMonth(d.getMonth() - (11 - i));
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    });
+    const rand = (min, max) => Math.round(Math.random() * (max - min) + min);
+
+    const revenue = months.map(() => rand(220_000_000, 480_000_000));
+    const cost    = months.map(() => rand(100_000_000, 220_000_000));
+
+    const products = Array.from({length: 12}, (_, i) => ({
+      name: `상품 ${String.fromCharCode(65+i)}`,
+      sales: rand(1200, 8400)
+    }));
+
+    const traffic = [
+      {label: 'Organic', value: rand(35, 48)},
+      {label: 'Paid', value: rand(18, 30)},
+      {label: 'Referral', value: rand(10, 20)},
+      {label: 'Email', value: rand(8, 16)},
+      {label: 'Direct', value: rand(10, 22)},
+    ];
+
+    // Issues: extend table to ~200 rows
+    const issueSeeds = [
+      {svc:'Auth API', sev:'Low'}, {svc:'Orders', sev:'Medium'}, {svc:'Payments', sev:'High'}, {svc:'Analytics', sev:'Low'},
+      {svc:'Billing', sev:'High'}, {svc:'CRM', sev:'Medium'}, {svc:'Gateway', sev:'High'}, {svc:'ETL', sev:'Low'},
+      {svc:'Cache', sev:'Medium'}, {svc:'Search', sev:'High'}, {svc:'Recsys', sev:'Medium'}
+    ];
+    const statuses = ['Resolved','Investigating','Mitigating','Outage'];
+    const owners = ['Kim','Lee','Choi','Park','Han','Jeon','Shin','Jung','Song','Na','Yoo'];
+
+    function synthesizeIssues(existingRows=40, targetRows=220) {
+      const tbody = $('#issues-body');
+      const start = existingRows + 1;
+      for (let i = start; i <= targetRows; i++) {
+        const seed = issueSeeds[rand(0, issueSeeds.length-1)];
+        const status = statuses[rand(0, statuses.length-1)];
+        const owner = owners[rand(0, owners.length-1)];
+        const sla = ['1h','2h','4h','6h','8h','12h','24h'][rand(0,6)];
+        const dt = new Date(2025, 7, rand(20, 31), rand(8, 23), rand(0, 59));
+        const id = `#2025-${String(i).padStart(4,'0')}`;
+        const cls = status === 'Outage' ? 'bad' : (status === 'Resolved' ? 'ok' : 'warn');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${id}</td><td>${seed.svc}</td><td>${seed.sev}</td><td><span class="status ${cls}">${status}</span></td><td>${owner}</td><td>${sla}</td><td>${dt.toISOString().slice(0,16).replace('T',' ')}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    // -----------------------------------
+    // Charts
+    // -----------------------------------
+    let revenueChart, productChart, trafficChart;
+
+    function buildRevenue() {
+      const ctx = $('#chartRevenue');
+      revenueChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: months,
+          datasets: [
+            {label: 'Revenue', data: revenue, tension:.35, borderWidth: 2, fill: true, backgroundColor: 'rgba(91,140,255,.12)', borderColor: '#5b8cff'},
+            {label: 'Cost', data: cost, tension:.35, borderWidth: 2, fill: true, backgroundColor: 'rgba(126,231,255,.10)', borderColor: '#7ee7ff'}
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--txt') } } },
+          scales: {
+            x: { ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--txt-muted') }, grid: { color: 'rgba(255,255,255,.08)'} },
+            y: { ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--txt-muted'), callback: v => fmt.format(v/1_000_000)+'M' }, grid: { color: 'rgba(255,255,255,.08)'} }
+          }
+        }
+      });
+    }
+
+    function buildProducts(topn=5) {
+      const ctx = $('#chartProducts');
+      const top = products.slice(0).sort((a,b)=>b.sales-a.sales).slice(0, topn);
+      if (productChart) productChart.destroy();
+      productChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: top.map(d=>d.name), datasets: [{label: '판매량', data: top.map(d=>d.sales)}] },
+        options: { scales: { x: { ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--txt-muted') } , grid:{display:false}}, y: { ticks:{ color: getComputedStyle(document.documentElement).getPropertyValue('--txt-muted') } } }, plugins:{legend:{labels:{color:getComputedStyle(document.documentElement).getPropertyValue('--txt')}}} }
+      });
+    }
+
+    function buildTraffic() {
+      const ctx = $('#chartTraffic');
+      trafficChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: traffic.map(d=>d.label), datasets: [{ data: traffic.map(d=>d.value) }] },
+        options: { plugins: { legend: { position: 'bottom', labels:{ color: getComputedStyle(document.documentElement).getPropertyValue('--txt') } } } }
+      });
+    }
+
+    // -----------------------------------
+    // Table logic: search + filter + sort + paging
+    // -----------------------------------
+    const table = {
+      page: 1, perPage: 20, rows: [], filtered: [],
+      collect() { this.rows = $$('#issues-body tr').map(tr => ({ tr, text: tr.innerText.toLowerCase() })); this.filtered = this.rows; },
+      apply() {
+        // paging
+        const start = (this.page-1)*this.perPage; const end = start + this.perPage;
+        this.rows.forEach(({tr})=> tr.style.display='none');
+        this.filtered.slice(start, end).forEach(({tr})=> tr.style.display='');
+        $('#page-info').textContent = `${this.page} / ${Math.max(1, Math.ceil(this.filtered.length/this.perPage))}`;
+        $('#table-stats').textContent = `총 ${fmt.format(this.filtered.length)}건 · 페이지당 ${this.perPage}`;
+      },
+      search(q) { q = q.toLowerCase(); this.filtered = this.rows.filter(r => r.text.includes(q)); this.page = 1; this.apply(); },
+      filterSeverity(sev) {
+        this.filtered = this.rows.filter(({tr}) => sev ? tr.children[2].innerText === sev : true);
+        this.page = 1; this.apply();
+      },
+      sortByCreated() {
+        const idx = 6; // created col
+        this.filtered.sort((a,b) => a.tr.children[idx].innerText.localeCompare(b.tr.children[idx].innerText));
+        this.page = 1; this.apply();
+      },
+      reset() { this.filtered = this.rows; this.page = 1; this.apply(); }
+    };
+
+    // -----------------------------------
+    // KPI populate
+    // -----------------------------------
+    function populateKpis() {
+      const sum = arr => arr.reduce((a,b)=>a+b,0);
+      const rev = sum(revenue.slice(-3));
+      const cst = sum(cost.slice(-3));
+      $('#kpi-sales').textContent = money(revenue.at(-1));
+      $('#kpi-sales-delta').textContent = `+${( (revenue.at(-1)/revenue.at(-2)-1)*100 ).toFixed(1)}% 오늘`;
+      $('#kpi-mrr').textContent = money(sum(revenue.slice(-1)));
+      $('#kpi-mrr-delta').textContent = `+${( (revenue.at(-1)/revenue.at(-2)-1)*100 ).toFixed(1)}% MoM`;
+      const users = rand(125_000, 188_000);
+      $('#kpi-users').textContent = fmt.format(users);
+      $('#kpi-users-delta').textContent = `+${rand(1,5)}.% WoW`;
+      $('#kpi-churn').textContent = `${(Math.random()*3+1).toFixed(2)}%`;
+      $('#kpi-churn-delta').textContent = `+${(Math.random()*0.8).toFixed(1)}% MoM`;
+      $('#kpi-uptime').textContent = `${(99 + Math.random()).toFixed(3)}%`;
+      $('#kpi-uptime-delta').textContent = `+${(Math.random()*0.02).toFixed(2)} 30d`;
+      const alerts = rand(4,32);
+      $('#kpi-alerts').textContent = alerts;
+      $('#kpi-alerts-delta').textContent = `최근 24h`;
+    }
+
+    // -----------------------------------
+    // Actions
+    // -----------------------------------
+    document.addEventListener('DOMContentLoaded', () => {
+      applyTheme(state.theme);
+      applySidebar(state.sidebarCollapsed);
+      applyDense(state.denseTable);
+
+      buildRevenue(); buildProducts(); buildTraffic();
+      populateKpis();
+
+      synthesizeIssues(40, 220); // extend table to 220 rows
+      table.collect(); table.apply();
+
+      // Search
+      $('#table-search').addEventListener('input', (e)=> table.search(e.target.value));
+      $('#sev-filter').addEventListener('change', (e)=> table.filterSeverity(e.target.value));
+      $('#sort-created').addEventListener('click', ()=> table.sortByCreated());
+      $('#reset-table').addEventListener('click', ()=> { $('#table-search').value=''; $('#sev-filter').value=''; table.reset(); });
+
+      // Paging
+      $$('button[data-page]').forEach(btn => btn.addEventListener('click', () => {
+        const maxPage = Math.max(1, Math.ceil(table.filtered.length/table.perPage));
+        if (btn.dataset.page==='prev') table.page = Math.max(1, table.page-1);
+        else table.page = Math.min(maxPage, table.page+1);
+        table.apply();
+      }));
+
+      // Header actions
+      $('#sidebar-collapse').addEventListener('click', ()=> { state.sidebarCollapsed = !state.sidebarCollapsed; applySidebar(state.sidebarCollapsed); });
+      $('#notify').addEventListener('click', ()=> toast('새로운 시스템 알림이 도착했습니다. 로그를 확인하세요.','info'));
+      $('#new-report').addEventListener('click', openModal);
+      $('#open-modal').addEventListener('click', (e)=> { e.preventDefault(); openModal(); });
+      $('#modal-close').addEventListener('click', closeModal);
+      $('#modal-cancel').addEventListener('click', closeModal);
+      $('#modal-create').addEventListener('click', ()=> {
+        const title = $('#report-title').value || '무제';
+        const range = $('#report-range').value;
+        closeModal(); toast(`보고서 "${title}" 가 생성되었습니다. (${range})`, 'success');
+      });
+
+      // Activity
+      $('#activity-input').addEventListener('keydown', (e)=> {
+        if (e.key === 'Enter' && e.target.value.trim()) {
+          const chip = document.createElement('div');
+          const time = new Date().toTimeString().slice(0,5);
+          chip.className = 'chip'; chip.textContent = `${time} ${e.target.value}`;
+          $('#activity').prepend(chip);
+          e.target.value = '';
+        }
+      });
+      $('#activity-clear').addEventListener('click', ()=> $('#activity').innerHTML='');
+
+      // Theme toggle
+      $('#toggle-theme').addEventListener('click', (e)=>{ e.preventDefault(); state.theme = (state.theme==='light' ? 'dark':'light'); applyTheme(state.theme); });
+
+      // Tabs TopN
+      $$('.tab').forEach(tab => tab.addEventListener('click', () => { $$('.tab').forEach(t=>t.classList.remove('active')); tab.classList.add('active'); buildProducts(parseInt(tab.dataset.topn,10)); }));
+
+      // Download CSV from table
+      $('#download-csv').addEventListener('click', (e)=>{
+        e.preventDefault();
+        const rows = [['Ticket','Service','Severity','Status','Owner','SLA','Created']];
+        $$('#issues-body tr').forEach(tr => rows.push(Array.from(tr.children).map(td=> td.innerText)));
+        const csv = rows.map(r=> r.map(x => '"'+String(x).replaceAll('"','""')+'"').join(',')).join('\n');
+        const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'issues.csv'; a.click(); URL.revokeObjectURL(url);
+      });
+
+      // Settings toggles
+      $('#toggle-animations').addEventListener('change', (e)=> { state.animations = e.target.checked; document.body.style.scrollBehavior = state.animations ? 'smooth' : 'auto'; if(state.persist) localStorage.setItem('animations', JSON.stringify(state.animations)); });
+      $('#persist-state').addEventListener('change', (e)=> { state.persist = e.target.checked; if(!state.persist) localStorage.clear(); });
+      $('#dense-table').addEventListener('change', (e)=> { state.denseTable = e.target.checked; applyDense(state.denseTable); });
+      $('#auto-refresh').addEventListener('change', (e)=> { state.autoRefresh = e.target.checked; if (state.autoRefresh) startAutoRefresh(); else stopAutoRefresh(); });
+
+      // Persist initial
+      if (state.persist) { localStorage.setItem('animations', JSON.stringify(state.animations)); localStorage.setItem('denseTable', JSON.stringify(state.denseTable)); }
+
+      // Search focus
+      $('#search').addEventListener('keydown', (e)=> { if (e.key==='Enter') toast(`"${e.target.value}" 검색 — (데모)`, 'info'); });
+
+      document.body.style.scrollBehavior = state.animations ? 'smooth' : 'auto';
+    });
+
+    let refreshTimer = null;
+    function startAutoRefresh(){ stopAutoRefresh(); refreshTimer = setInterval(()=>{ 
+      // demo: just update KPIs and append activity
+      populateKpis();
+      const chip = document.createElement('div');
+      const time = new Date().toTimeString().slice(0,5);
+      chip.className = 'chip'; chip.textContent = `${time} 자동 새로고침: KPI 갱신`;
+      $('#activity').prepend(chip);
+    }, 60000); }
+    function stopAutoRefresh(){ if (refreshTimer) clearInterval(refreshTimer); }
+  </script>
+</body>
+</html>
