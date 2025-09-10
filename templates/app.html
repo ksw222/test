@@ -1,0 +1,33 @@
+<div class="app">
+    <!-- Sidebar -->
+    <aside>
+      <div class="brand" style="padding:8px 10px 2px;">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          부실징후 예측
+          <div style="font-size:12px; color:var(--muted);">EWS · TS2000 · PostgreSQL</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <div class="nav-section">
+          <div class="nav-title">탐색</div>
+          <a href="#" class="active" aria-current="page">📊 개요 / Overview</a>
+          <a href="#portfolio">📋 포트폴리오</a>
+          <a href="#alerts">🚨 경보</a>
+          <a href="#cohorts">👥 코호트</a>
+          <a href="#settings">⚙️ 설정</a>
+        </div>
+        <div class="nav-section">
+          <div class="nav-title">빠른 필터</div>
+          <div style="display:grid; gap:8px;">
+            <label class="chip"><input type="checkbox" id="fltHigh" checked /> High 위험만</label>
+            <label class="chip"><input type="checkbox" id="fltMed" checked /> Medium 포함</label>
+            <label class="chip"><input type="checkbox" id="fltLow" /> Low 제외</label>
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-title">업종</div>
+          <div id="industryChips" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+      </nav>
+    </aside>
